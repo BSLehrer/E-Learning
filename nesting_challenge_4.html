@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nesting-Challenge — Zuschnittoptimierung</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EDE6D6; --paper-dark:#E2D9C4; --walnut:#3B2A1E; --walnut-soft:#5A4633;
+    --steel:#8B8B85; --steel-light:#C9C4B8; --orange:#D9622B; --kerf-red:#B5342A;
+    --sap-green:#5C7A4A; --sapwood:#C9A876; --plywood:#D9B98A; --hardwood:#B8895F;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--paper);color:var(--walnut);font-family:'Space Mono',monospace;}
+  .app{max-width:1220px;margin:0 auto;padding:22px 20px 60px;}
+
+  header.top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid var(--walnut);padding-bottom:14px;margin-bottom:14px;flex-wrap:wrap;gap:14px;}
+  .title-block h1{font-family:'Oswald',sans-serif;font-weight:700;font-size:27px;letter-spacing:0.5px;text-transform:uppercase;margin:0;}
+  .title-block .subtitle{font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:var(--walnut-soft);margin-top:3px;}
+  .hud{display:flex;gap:10px;flex-wrap:wrap;}
+  .hud-chip{background:var(--walnut);color:var(--paper);padding:8px 14px;border-radius:2px;text-align:center;min-width:88px;}
+  .hud-chip .label{font-size:9px;letter-spacing:1px;text-transform:uppercase;opacity:0.7;display:block;}
+  .hud-chip .value{font-family:'Oswald',sans-serif;font-size:19px;font-weight:600;}
+  .hud-chip.timer{background:var(--orange);}
+  .hud-chip.timer.low{background:var(--kerf-red);animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
+  .hud-chip.score{background:var(--sap-green);}
+
+  .tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+  .tab{font-family:'Oswald',sans-serif;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;padding:9px 14px;
+       border:2px solid var(--walnut);background:var(--paper-dark);color:var(--walnut);border-radius:2px;cursor:pointer;font-weight:600;}
+  .tab.active{background:var(--walnut);color:var(--paper);}
+  .tab.locked{opacity:0.62;}
+  .tab .lock{margin-left:5px;}
+
+  .workspace{display:grid;grid-template-columns:1fr 220px;gap:16px;align-items:start;}
+  @media (max-width:980px){.workspace{grid-template-columns:1fr;}}
+  .panel{background:#fff8ec;border:1px solid var(--steel-light);border-radius:3px;padding:14px;}
+  .panel h2{font-family:'Oswald',sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:0 0 10px;color:var(--walnut-soft);border-bottom:1px solid var(--steel-light);padding-bottom:8px;}
+
+  #trayStrip{display:flex;gap:10px;overflow-x:auto;padding:10px 4px 18px;border-bottom:2px dashed var(--steel-light);align-items:flex-end;}
+  .tray-item{background:var(--sapwood);border:2px solid var(--walnut);border-radius:2px;cursor:grab;user-select:none;touch-action:none;
+    flex-shrink:0;position:relative;min-width:14px;min-height:12px;}
+  .tray-item .dims{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:3px;
+    font-family:'Space Mono',monospace;font-weight:700;font-size:10px;white-space:nowrap;color:var(--walnut);background:var(--paper);
+    padding:1px 4px;border:1px solid var(--steel-light);border-radius:2px;}
+  .tray-item .mat{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:2px;
+    font-size:8px;text-transform:uppercase;letter-spacing:0.4px;color:var(--walnut-soft);white-space:nowrap;}
+
+  #plateWrap{position:relative;display:flex;justify-content:center;align-items:flex-start;padding:6px;overflow-x:auto;}
+  svg#plateSvg{background:#fbf7ee;border:1px solid var(--steel-light);touch-action:none;}
+  .part-rect{cursor:grab;}
+  .part-rect .label{font-family:'Space Mono',monospace;font-size:10px;fill:var(--walnut);pointer-events:none;}
+  .anschnitt-zone{fill:url(#hatchAnschnitt);opacity:0.9;}
+  .fail-guillotine{stroke:var(--kerf-red);stroke-width:3;stroke-dasharray:4 3;}
+  .rest-highlight{fill:rgba(92,122,74,0.28);stroke:var(--sap-green);stroke-width:2;stroke-dasharray:3 2;}
+
+  #ruleCard{font-size:11px;line-height:1.55;}
+  #ruleCard .ruleTitle{font-family:'Oswald',sans-serif;font-weight:600;font-size:13px;margin-bottom:4px;}
+  #ruleCard .swatch{display:inline-block;width:11px;height:11px;margin-right:5px;vertical-align:middle;border:1px solid var(--walnut);}
+  .controls{display:flex;flex-direction:column;gap:8px;margin-top:14px;}
+  button{font-family:'Oswald',sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;font-size:12px;
+    padding:10px 12px;border:2px solid var(--walnut);background:var(--paper);color:var(--walnut);border-radius:2px;cursor:pointer;}
+  button.primary{background:var(--orange);border-color:var(--orange);color:#fff;}
+  button.primary:hover{background:#c2551f;}
+  button:hover{background:var(--paper-dark);}
+
+  /* Fehlversuchs-Strichliste, wie am Werkstattpfosten */
+  #tally{margin-top:14px;font-size:10px;color:var(--walnut-soft);}
+  #tally .marks{font-family:'Space Mono',monospace;font-size:16px;letter-spacing:2px;line-height:1.4;}
+
+  .preview-panel{padding:20px;}
+  .preview-panel .lockIcon{font-size:34px;text-align:center;margin-bottom:8px;}
+  .preview-panel p{font-size:12px;line-height:1.6;}
+
+  #resultOverlay{position:fixed;inset:0;background:rgba(59,42,30,0.75);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;}
+  #resultCard{background:var(--paper);border:3px solid var(--walnut);border-radius:3px;max-width:560px;width:100%;padding:26px;position:relative;overflow:hidden;}
+  #resultCard h3{font-family:'Oswald',sans-serif;font-size:20px;text-transform:uppercase;margin:0 0 10px;}
+  #resultCard.fail h3{color:var(--kerf-red);}
+  #resultCard.ok h3{color:var(--sap-green);}
+  #resultCard p{font-size:12px;line-height:1.6;}
+  #resultCard table{width:100%;border-collapse:collapse;margin:12px 0;font-size:11px;}
+  #resultCard td{padding:6px 4px;border-bottom:1px solid var(--steel-light);}
+  #resultCard td.num{text-align:right;font-family:'Oswald',sans-serif;font-weight:600;}
+  #resultCard .actions{margin-top:16px;display:flex;gap:10px;}
+
+  /* Fehler-Stempel */
+  .stopStamp{position:absolute;top:14px;right:18px;border:5px solid var(--kerf-red);color:var(--kerf-red);
+    font-family:'Oswald',sans-serif;font-weight:700;font-size:22px;text-transform:uppercase;padding:6px 14px;
+    transform:rotate(-11deg);opacity:0;animation:stampIn 0.35s ease-out 0.05s forwards;letter-spacing:1px;border-radius:4px;}
+  @keyframes stampIn{0%{opacity:0;transform:rotate(-11deg) scale(2.4);}70%{opacity:1;}100%{opacity:0.88;transform:rotate(-11deg) scale(1);}}
+
+  /* Erfolgs-Gütesiegel */
+  .seal{position:absolute;top:10px;right:14px;width:88px;height:88px;border-radius:50%;border:4px double var(--sap-green);
+    display:flex;align-items:center;justify-content:center;text-align:center;color:var(--sap-green);font-family:'Oswald',sans-serif;
+    font-weight:700;font-size:10px;line-height:1.15;text-transform:uppercase;transform:rotate(-14deg) scale(2.6);opacity:0;
+    animation:sealDown 0.45s cubic-bezier(.2,.9,.3,1.2) 0.1s forwards;letter-spacing:0.5px;background:rgba(92,122,74,0.06);}
+  @keyframes sealDown{0%{opacity:0;transform:rotate(-14deg) scale(2.6);}75%{opacity:1;}100%{opacity:0.92;transform:rotate(-14deg) scale(1);}}
+
+  footer.note{margin-top:26px;font-size:10px;color:var(--walnut-soft);line-height:1.6;border-top:1px solid var(--steel-light);padding-top:12px;}
+
+  /* ---- Startscreen ---- */
+  .app{display:none;}
+  #startScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:30px 20px;}
+  #startCard{max-width:680px;width:100%;background:#fff8ec;border:3px solid var(--walnut);border-radius:3px;padding:34px 34px 28px;}
+  #startCard .eyebrow{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--orange);font-weight:700;margin-bottom:6px;}
+  #startCard h1{font-family:'Oswald',sans-serif;font-weight:700;font-size:26px;text-transform:uppercase;margin:0 0 4px;color:var(--walnut);letter-spacing:0.3px;}
+  #startCard .meta{font-size:11px;color:var(--walnut-soft);margin-bottom:18px;border-bottom:1px solid var(--steel-light);padding-bottom:14px;}
+  #startCard h2{font-family:'Oswald',sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:0.8px;color:var(--walnut-soft);margin:16px 0 6px;}
+  #startCard p{font-size:12.5px;line-height:1.65;margin:0 0 4px;}
+  #startCard .scopeNote{background:var(--paper-dark);border-left:3px solid var(--sap-green);padding:10px 12px;margin-top:14px;font-size:11.5px;line-height:1.6;}
+  #startCard .actions{margin-top:22px;text-align:right;}
+  #startCard button.primary{padding:12px 22px;font-size:13px;}
+</style>
+</head>
+<body>
+
+<div id="startScreen">
+  <div id="startCard">
+    <div class="eyebrow">Prototyp — kein fertiges Lernspiel</div>
+    <h1>Nesting-Challenge</h1>
+    <div class="meta">Portfolioaufgabe UE06, Aufgabe 2* · Modul E-Learning/Lerntechnologie · TU Dresden · Sommersemester 2026<br>Björn Födisch · bbQ24 · Juli 2026</div>
+
+    <h2>Was das hier ist</h2>
+    <p>Dieser Prototyp ist keine fertige Lernanwendung, sondern eine gegenständliche Auseinandersetzung mit der Frage, welche Anforderungen ein Serious Game im berufsschulischen Fachunterricht erfüllen muss, um mehr zu sein als aufgesetzte Gamification. Er macht die in der schriftlichen Reflexion entwickelten Prinzipien, Consequential Feedback statt Punkte, Guillotine-Zwang statt freier Formen, Reststück statt pauschalem Verschnitt, exemplarisch spielbar.</p>
+
+    <h2>Warum das so eng begrenzt ist</h2>
+    <p>Allgemeinbildende Schulen müssen bis zur Mittelstufe bewusst breit ausbilden, oft losgelöst von der harten Realität eines einzelnen Berufsfelds, weil die späteren Berufswege der Lernenden kaum unterschiedlicher sein könnten. An der Berufsschule kehrt sich dieses Prinzip um: Hier muss sich jedes Lernangebot der Fachdomäne unterordnen, nicht weil Einschränkung ein pädagogischer Selbstzweck wäre, sondern weil die reale berufliche Praxis es zwingend verlangt. Ein Lernspiel, das in der Allgemeinbildung transferierbare Fähigkeiten trainiert, verliert in der Berufsdomäne genau dadurch seinen Wert, ein Trainingsprogramm für angehende Elektroniker bringt einer angehenden Tischlerin keinen Vorteil. Das erklärt zugleich, weshalb domänenspezifische Serious Games in der beruflichen Bildung so selten sind: Sie lassen sich kaum wiederverwenden, jede Fachrichtung bräuchte im Grunde ihr eigenes.</p>
+
+    <div class="scopeNote">Deshalb ist hier bewusst nur die Spanplatten-Variante spielbar. Sperrholz und Massivholz sind als Vorschau hinterlegt, ihre korrekte Umsetzung würde echte, sperrende Maserrichtungsregeln erfordern, die für eine erste Machbarkeitsprüfung nicht notwendig sind. Die Einschränkung ist selbst schon eine Umsetzung des oben beschriebenen Prinzips: lieber eine Domäne vollständig ernst nehmen als drei nur andeuten.</div>
+
+    <div class="actions"><button class="primary" id="btnStartPrototype">Prototyp starten</button></div>
+  </div>
+</div>
+
+<div class="app">
+  <header class="top">
+    <div class="title-block">
+      <h1>Nesting-Challenge</h1>
+      <div class="subtitle">Zuschnittoptimierung an der Plattenaufteilsäge · Serious Game Prototyp</div>
+    </div>
+    <div class="hud">
+      <div class="hud-chip timer" id="chipTimer"><span class="label">Zeit</span><span class="value" id="timerVal">3:00</span></div>
+      <div class="hud-chip" id="chipWaste"><span class="label">Abfall</span><span class="value" id="wasteVal">—</span></div>
+      <div class="hud-chip score"><span class="label">Bestwert</span><span class="value" id="scoreVal">—</span></div>
+    </div>
+  </header>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="workspace" id="gameView">
+    <div class="panel" style="grid-column: 1 / span 2;">
+      <h2>Materialliste (<span id="trayCount">0</span> Teile) — im Maßstab der Platte</h2>
+      <div id="trayStrip"></div>
+      <h2 style="margin-top:14px;">Rohplatte — Spanplatte, Querformat</h2>
+      <div id="preCutBar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;font-size:11px;">
+        <button id="btnPreCutReveal">Ersten Trennschnitt setzen (optional)</button>
+        <span id="preCutControls" style="display:none;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button id="btnPreCutToggle">Erster Trennschnitt: senkrecht</button>
+          <span id="preCutLabel">Abstand von links (mm)</span>
+          <input type="number" id="preCutInput" step="10" style="width:80px;font-family:'Space Mono',monospace;padding:6px;border:2px solid var(--walnut);border-radius:2px;">
+          <button class="primary" id="btnPreCutApply">Anwenden</button>
+        </span>
+        <span id="preCutWarning" style="color:var(--kerf-red);"></span>
+      </div>
+      <div id="plateWrap"><svg id="plateSvg"></svg></div>
+      <div style="font-size:10px;color:var(--walnut-soft);margin-top:8px;">
+        Teil anklicken &amp; ziehen zum Platzieren · Klick auf platziertes Teil = 90° drehen (Spanplatte ist richtungsfrei)
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Werkstoffregel</h2>
+      <div id="ruleCard"></div>
+      <div class="controls">
+        <button class="primary" id="btnSaegen">Sägen!</button>
+        <button id="btnReset">Platte zurücksetzen</button>
+      </div>
+      <div id="tally">
+        <div>Fehlversuche:</div>
+        <div class="marks" id="tallyMarks">–</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel preview-panel" id="previewView" style="display:none;"></div>
+
+  <footer class="note">
+    Prototyp für UE06 (Gamification/Serious Games, Modul E-Learning, TU Dresden). Spielbar ist ausschließlich die Spanplatten-Runde (richtungsfrei).
+    Sperrholz und Massivholz sind als Vorschau hinterlegt, ihre Maserrichtungsregeln würden nicht-drehbare Einzelteile erfordern, das folgt in einer späteren Ausbaustufe.
+    Verschnitt = Anteil des Plattenrests, der als Kleinabfall unter der Wiederverwendungsschwelle liegt (250 mm Mindestkante, 0,25 m² Mindestfläche); größere, zusammenhängende Reste gelten als Reststück
+    fürs Restplattenlager und zählen nicht als Verschnitt. Die Gesamtabfallmenge ist rechnerisch unabhängig von der Anordnung, ob sie als Reststück nutzbar bleibt oder in Kleinabfall zerfällt, ist die eigentliche Optimierungsleistung.
+  </footer>
+</div>
+
+<div id="resultOverlay">
+  <div id="resultCard">
+    <div id="stampSlot"></div>
+    <h3 id="resultTitle">Ergebnis</h3>
+    <div id="resultBody"></div>
+    <div class="actions">
+      <button class="primary" id="btnContinue">Weiter</button>
+      <button id="btnRetry">Nochmal versuchen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   NESTING-CHALLENGE — Prototyp v2
+   Nur Spanplatte spielbar. Sperrholz/Massivholz = Vorschau.
+   ========================================================= */
+
+const SPAN = { id:'span', name:'Spanplatte', hex:'#C9A876',
+  ruleText:'Richtungsfrei. Die Spanplatte hat keine durchgehende Faserstruktur an der Oberfläche, jedes Teil darf beliebig gedreht werden. Die einzige Zwangsbedingung ist der durchgehende Guillotine-Schnitt.' };
+
+const PREVIEWS = {
+  sperr: { name:'Sperrholz (überfurniert)', hex:'#D9B98A',
+    text:'Richtungsgebunden — wegen des kreuzweisen Lagenaufbaus muss die Längenangabe der Materialliste zwingend um 90° gedreht zur Plattenmaserung eingebaut werden. Ein Teil darf hier NICHT frei gedreht werden.' },
+  massiv: { name:'Massivholz (3-Schicht)', hex:'#B8895F',
+    text:'Richtungsgebunden — die Längenangabe muss 1:1 parallel zur Plattenmaserung verlaufen. Auch hier ist die Drehung eines Teils gesperrt, nicht frei wie bei der Spanplatte.' },
+};
+
+const PLATE_W = 2800, PLATE_H = 2070;   // mm, reales Egger-Vollformat
+const ANSCHNITT = 30;                   // mm
+const KERF = 3.5;                       // mm
+const PX_PER_MM = 0.255;
+const ROUND_SECONDS = 180;
+const TARGET_PIECES = 10;
+const REUSE_MIN_AREA = 250000;          // mm², 0,25 m²
+const REUSE_MIN_DIM = 250;              // mm
+
+const NAME_POOL = ['Seitenwand','Boden','Rückwand','Fachboden','Tür','Deckel','Sockel','Blende','Zwischenboden','Regalboden','Korpusseite','Schubladenboden'];
+
+let state = null;
+let timerHandle = null;
+let dragCtx = null, ghostEl = null;
+let failCount = 0;
+let bestWaste = null;
+let preCutOrientation = 'vertical'; // Vorschau-Zustand vor dem Anwenden
+let preCutRevealed = false; // Steuerung erst sichtbar, wenn aktiv aufgeklappt
+
+/* ---------- Teileliste generieren (mit Spielraum, kein Volltiling) ---------- */
+function shuffledNames(){
+  const arr = [...NAME_POOL];
+  for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; }
+  return arr;
+}
+
+function generateParts(){
+  const usableW = PLATE_W - ANSCHNITT, usableH = PLATE_H;
+  const usableArea = usableW*usableH;
+  const targetFill = 0.60 + Math.random()*0.10; // 60-70% Flächenausnutzung, Rest ist gestaltbarer Spielraum
+  const names = shuffledNames();
+  let raw = [];
+  for(let i=0;i<TARGET_PIECES;i++){
+    raw.push({ lenMm: 300+Math.random()*1000, widMm: 220+Math.random()*480 });
+  }
+  const sumArea = raw.reduce((s,p)=>s+p.lenMm*p.widMm,0);
+  const scale = Math.sqrt((usableArea*targetFill)/sumArea);
+  const parts = raw.map((p,i)=>{
+    let len = Math.max(180, Math.round((p.lenMm*scale)/10)*10);
+    let wid = Math.max(150, Math.round((p.widMm*scale)/10)*10);
+    if(wid > len){ const t=len; len=wid; wid=t; } // erstes Maß = längeres Maß, Werkstattkonvention
+    len = Math.min(len, usableW-40);
+    wid = Math.min(wid, usableH-40);
+    return { id:'p'+i, name:names[i%names.length], lenMm:len, widMm:wid, rotated:Math.random()<0.5, placed:false, x:null, y:null };
+  });
+  return parts;
+}
+
+/* ---------- Rundeninitialisierung ---------- */
+function startRound(){
+  state = { parts: generateParts(), timeLeft: ROUND_SECONDS, preCut: null };
+  failCount = 0;
+  preCutOrientation = 'vertical';
+  preCutRevealed = false;
+  updateTally();
+  renderRuleCard();
+  renderTray();
+  updatePreCutUI();
+  renderPlate();
+  startTimer();
+  document.getElementById('wasteVal').textContent = '—';
+  document.getElementById('chipWaste').style.background = '';
+  document.getElementById('btnContinue').textContent = 'Weiter';
+}
+
+function renderRuleCard(){
+  document.getElementById('ruleCard').innerHTML = `
+    <div class="ruleTitle"><span class="swatch" style="background:${SPAN.hex}"></span>${SPAN.name}</div>
+    <p style="margin:6px 0;">${SPAN.ruleText}</p>
+    <p style="margin:6px 0;color:var(--walnut-soft);">Plattenformat: ${PLATE_W}×${PLATE_H} mm<br>Anschnitt: ${ANSCHNITT} mm<br>Schnittfuge: ${KERF} mm<br>Reststück-Schwelle: ≥0,25 m², ≥250 mm Kante</p>
+  `;
+}
+
+function updateTally(){
+  document.getElementById('tallyMarks').textContent = failCount===0
+    ? '–'
+    : Array.from({length:failCount}).map((_,i)=> i%5===4 ? '/' : '|').join('');
+}
+
+/* ---------- Tray ---------- */
+function renderTray(){
+  const tray = document.getElementById('trayStrip');
+  tray.innerHTML = '';
+  const pending = state.parts.filter(p=>!p.placed);
+  document.getElementById('trayCount').textContent = pending.length;
+  pending.forEach(p=>{
+    const item = document.createElement('div');
+    item.className = 'tray-item';
+    item.dataset.id = p.id;
+    item.style.background = SPAN.hex;
+    const {w,h} = partDims(p); // gleicher Maßstab wie die Platte (PX_PER_MM), keine künstliche Mindestgröße
+    item.style.width = mmToPx(w)+'px';
+    item.style.height = mmToPx(h)+'px';
+    item.innerHTML = `
+      <div class="dims">${p.lenMm} × ${p.widMm}</div>
+      <div class="mat">${p.name}</div>
+    `;
+    item.addEventListener('pointerdown', (e)=> beginDragFromTray(e, p.id));
+    tray.appendChild(item);
+  });
+}
+
+/* ---------- Plate rendering ---------- */
+function mmToPx(v){ return v*PX_PER_MM; }
+
+function renderPlate(){
+  const svg = document.getElementById('plateSvg');
+  const W = mmToPx(PLATE_W), H = mmToPx(PLATE_H);
+  svg.setAttribute('width', W); svg.setAttribute('height', H);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  let preCutHatch = '';
+  if(state.preCut){
+    const {orientation, posMm} = state.preCut;
+    if(orientation==='vertical'){
+      preCutHatch = `<rect class="anschnitt-zone" x="${mmToPx(posMm-KERF/2)}" y="0" width="${mmToPx(KERF)}" height="${H}"></rect>`;
+    } else {
+      preCutHatch = `<rect class="anschnitt-zone" x="0" y="${mmToPx(posMm-KERF/2)}" width="${W}" height="${mmToPx(KERF)}"></rect>`;
+    }
+  }
+  svg.innerHTML = `
+    <defs>
+      <pattern id="hatchAnschnitt" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+        <rect width="8" height="8" fill="#d8cfba"></rect>
+        <line x1="0" y1="0" x2="0" y2="8" stroke="#8B8B85" stroke-width="2"></line>
+      </pattern>
+      <marker id="arrowSteel" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8B8B85"></path></marker>
+    </defs>
+    <rect x="0" y="0" width="${W}" height="${H}" fill="#fbf7ee" stroke="#8B8B85"></rect>
+    <rect class="anschnitt-zone" x="0" y="0" width="${mmToPx(ANSCHNITT)}" height="${H}"></rect>
+    ${preCutHatch}
+    <g id="restLayer"></g>
+    <g id="partsLayer"></g>
+    <g id="preCutPreviewLayer"></g>
+  `;
+  const layer = svg.querySelector('#partsLayer');
+  state.parts.filter(p=>p.placed).forEach(p=> layer.appendChild(makePartEl(p)));
+  renderPreCutPreview();
+}
+
+/* ---------- Trennschnitt-Bedienung ---------- */
+function partDims(p){ return p.rotated ? {w:p.widMm, h:p.lenMm} : {w:p.lenMm, h:p.widMm}; }
+
+function updatePreCutUI(){
+  const bar = document.getElementById('preCutBar');
+  const anyPlaced = state.parts.some(p=>p.placed);
+  const revealBtn = document.getElementById('btnPreCutReveal');
+  const controls = document.getElementById('preCutControls');
+  const toggleBtn = document.getElementById('btnPreCutToggle');
+  const label = document.getElementById('preCutLabel');
+  const input = document.getElementById('preCutInput');
+  const applyBtn = document.getElementById('btnPreCutApply');
+  const warn = document.getElementById('preCutWarning');
+  warn.textContent = '';
+
+  if(state.preCut){
+    // Einmal gesägt, gibt es kein Zurück, die ganze Leiste verschwindet endgültig für diese Runde
+    bar.style.display='none';
+    return;
+  }
+  bar.style.display='flex';
+
+  if(anyPlaced){
+    // Nach Platzierungsbeginn ist ein Erstschnitt nicht mehr sinnvoll, weder anbieten noch setzen
+    revealBtn.style.display='none';
+    controls.style.display='none';
+    return;
+  }
+
+  if(!preCutRevealed){
+    revealBtn.style.display='inline-block';
+    controls.style.display='none';
+    return;
+  }
+
+  revealBtn.style.display='none';
+  controls.style.display='inline-flex';
+  toggleBtn.textContent = 'Erster Trennschnitt: ' + (preCutOrientation==='vertical' ? 'senkrecht' : 'waagerecht');
+  label.textContent = preCutOrientation==='vertical' ? 'Abstand von links (mm)' : 'Abstand von oben (mm)';
+  if(!input.value){
+    input.value = preCutOrientation==='vertical' ? Math.round(PLATE_W/2/10)*10 : Math.round(PLATE_H/2/10)*10;
+  }
+  renderPreCutPreview();
+}
+
+document.getElementById('btnPreCutReveal').addEventListener('click', ()=>{
+  preCutRevealed = true;
+  updatePreCutUI();
+});
+document.getElementById('btnPreCutToggle').addEventListener('click', ()=>{
+  preCutOrientation = preCutOrientation==='vertical' ? 'horizontal' : 'vertical';
+  document.getElementById('preCutInput').value = '';
+  updatePreCutUI();
+});
+document.getElementById('preCutInput').addEventListener('input', renderPreCutPreview);
+document.getElementById('btnPreCutApply').addEventListener('click', ()=>{
+  const val = parseFloat(document.getElementById('preCutInput').value);
+  const warn = document.getElementById('preCutWarning');
+  if(isNaN(val)){ warn.textContent='Bitte ein Maß eingeben.'; return; }
+  let ok, msg;
+  if(preCutOrientation==='vertical'){
+    ok = (val - KERF/2 - ANSCHNITT >= MIN_CONTAINER_SIZE) && (PLATE_W - (val+KERF/2) >= MIN_CONTAINER_SIZE);
+    msg = `Beide Plattenhälften brauchen mindestens ${MIN_CONTAINER_SIZE} mm nutzbare Breite.`;
+  } else {
+    ok = (val - KERF/2 >= MIN_CONTAINER_SIZE) && (PLATE_H - (val+KERF/2) >= MIN_CONTAINER_SIZE);
+    msg = `Beide Plattenhälften brauchen mindestens ${MIN_CONTAINER_SIZE} mm nutzbare Höhe.`;
+  }
+  if(!ok){ warn.textContent = msg; return; }
+  state.preCut = { orientation: preCutOrientation, posMm: val };
+  updatePreCutUI();
+  renderPlate();
+});
+/* Kein Zurücknehmen: einmal gesägt, ist der Trennschnitt endgültig, entsprechend der Consequential-Feedback-Logik der Reflexion. */
+
+function renderPreCutPreview(){
+  const layer = document.getElementById('plateSvg') ? document.getElementById('plateSvg').querySelector('#preCutPreviewLayer') : null;
+  if(!layer) return;
+  layer.innerHTML = '';
+  if(state.preCut) return; // schon angewendet, keine Vorschau mehr nötig
+  const val = parseFloat(document.getElementById('preCutInput').value);
+  if(isNaN(val)) return;
+  const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('stroke', 'var(--kerf-red)'); line.setAttribute('stroke-width', 2); line.setAttribute('stroke-dasharray','6 4');
+  if(preCutOrientation==='vertical'){
+    line.setAttribute('x1', mmToPx(val)); line.setAttribute('x2', mmToPx(val));
+    line.setAttribute('y1', 0); line.setAttribute('y2', mmToPx(PLATE_H));
+  } else {
+    line.setAttribute('y1', mmToPx(val)); line.setAttribute('y2', mmToPx(val));
+    line.setAttribute('x1', 0); line.setAttribute('x2', mmToPx(PLATE_W));
+  }
+  layer.appendChild(line);
+}
+
+const MIN_CONTAINER_SIZE = 200; // mm, kleinste sinnvolle Plattenhälfte
+
+/* ---------- Container aus dem Trennschnitt-Zustand ableiten ---------- */
+function getContainers(){
+  const base = {x:ANSCHNITT, y:0, w:PLATE_W-ANSCHNITT, h:PLATE_H};
+  if(!state.preCut) return [base];
+  const {orientation, posMm} = state.preCut;
+  if(orientation==='vertical'){
+    const aW = (posMm - KERF/2) - ANSCHNITT;
+    const bW = PLATE_W - (posMm + KERF/2);
+    return [
+      {x:ANSCHNITT, y:0, w:aW, h:PLATE_H},
+      {x:posMm+KERF/2, y:0, w:bW, h:PLATE_H},
+    ];
+  } else {
+    const aH = posMm - KERF/2;
+    const bH = PLATE_H - (posMm + KERF/2);
+    return [
+      {x:ANSCHNITT, y:0, w:PLATE_W-ANSCHNITT, h:aH},
+      {x:ANSCHNITT, y:posMm+KERF/2, w:PLATE_W-ANSCHNITT, h:bH},
+    ];
+  }
+}
+
+function containerAtPoint(cx, cy){
+  return getContainers().find(c=> cx>=c.x && cx<=c.x+c.w && cy>=c.y && cy<=c.y+c.h) || null;
+}
+
+function makePartEl(p){
+  const {w,h} = partDims(p);
+  const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.setAttribute('class','part-rect');
+  g.dataset.id = p.id;
+  g.setAttribute('transform', `translate(${mmToPx(p.x)},${mmToPx(p.y)})`);
+  const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  rect.setAttribute('width', mmToPx(w)); rect.setAttribute('height', mmToPx(h));
+  rect.setAttribute('fill', SPAN.hex); rect.setAttribute('stroke', '#3B2A1E'); rect.setAttribute('stroke-width', 1.6);
+  g.appendChild(rect);
+  const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+  label.setAttribute('class','label'); label.setAttribute('x', 4); label.setAttribute('y', 12);
+  label.textContent = `${p.name} ${p.lenMm}×${p.widMm}`;
+  g.appendChild(label);
+  g.addEventListener('pointerdown', (e)=> beginDragFromPlate(e, p.id));
+  return g;
+}
+
+/* ---------- Drag & Drop (unverändert zur Vorversion, ohne Maserprüfung) ---------- */
+function beginDragFromTray(e, id){
+  e.preventDefault();
+  const p = state.parts.find(x=>x.id===id);
+  dragCtx = { id, fromTray:true };
+  createGhost(p, e.clientX, e.clientY);
+  window.addEventListener('pointermove', onDragMove);
+  window.addEventListener('pointerup', onDragEnd);
+}
+function beginDragFromPlate(e, id){
+  e.preventDefault(); e.stopPropagation();
+  const p = state.parts.find(x=>x.id===id);
+  const svgRect = document.getElementById('plateSvg').getBoundingClientRect();
+  const clickXmm = (e.clientX - svgRect.left)/PX_PER_MM, clickYmm = (e.clientY - svgRect.top)/PX_PER_MM;
+  dragCtx = { id, fromTray:false, offsetX: clickXmm - p.x, offsetY: clickYmm - p.y, moved:false };
+  createGhost(p, e.clientX, e.clientY);
+  window.addEventListener('pointermove', onDragMove);
+  window.addEventListener('pointerup', onDragEnd);
+}
+function createGhost(p, clientX, clientY){
+  const {w,h} = partDims(p);
+  ghostEl = document.createElement('div');
+  Object.assign(ghostEl.style, { position:'fixed', pointerEvents:'none',
+    left:(clientX-mmToPx(w)/2)+'px', top:(clientY-mmToPx(h)/2)+'px', width:mmToPx(w)+'px', height:mmToPx(h)+'px',
+    background:SPAN.hex, border:'2px solid #3B2A1E', opacity:'0.85', zIndex:40, fontFamily:'Space Mono, monospace', fontSize:'10px' });
+  ghostEl.textContent = `${p.lenMm}×${p.widMm}`;
+  document.body.appendChild(ghostEl);
+}
+function onDragMove(e){
+  if(!ghostEl || !dragCtx) return;
+  dragCtx.moved = true;
+  const p = state.parts.find(x=>x.id===dragCtx.id);
+  const {w,h} = partDims(p);
+  ghostEl.style.left = (e.clientX-mmToPx(w)/2)+'px'; ghostEl.style.top = (e.clientY-mmToPx(h)/2)+'px';
+}
+function onDragEnd(e){
+  window.removeEventListener('pointermove', onDragMove);
+  window.removeEventListener('pointerup', onDragEnd);
+  if(ghostEl){ ghostEl.remove(); ghostEl=null; }
+  if(!dragCtx) return;
+  const p = state.parts.find(x=>x.id===dragCtx.id);
+  const svgRect = document.getElementById('plateSvg').getBoundingClientRect();
+  const trayRect = document.getElementById('trayStrip').getBoundingClientRect();
+
+  if(e.clientX>=trayRect.left && e.clientX<=trayRect.right && e.clientY>=trayRect.top && e.clientY<=trayRect.bottom){
+    p.placed=false; p.x=null; p.y=null; renderTray(); renderPlate(); dragCtx=null; return;
+  }
+  if(!dragCtx.fromTray && !dragCtx.moved){
+    p.rotated = !p.rotated; clampIntoPlate(p); renderPlate(); dragCtx=null; return;
+  }
+  const {w,h} = partDims(p);
+  let xmm, ymm;
+  if(dragCtx.fromTray){ xmm=(e.clientX-svgRect.left)/PX_PER_MM - w/2; ymm=(e.clientY-svgRect.top)/PX_PER_MM - h/2; }
+  else { xmm=(e.clientX-svgRect.left)/PX_PER_MM - dragCtx.offsetX; ymm=(e.clientY-svgRect.top)/PX_PER_MM - dragCtx.offsetY; }
+
+  if(e.clientX<svgRect.left-40 || e.clientX>svgRect.right+40 || e.clientY<svgRect.top-40 || e.clientY>svgRect.bottom+40){
+    p.placed=false; p.x=null; p.y=null; renderTray(); renderPlate(); dragCtx=null; return;
+  }
+  xmm = Math.round(xmm/5)*5; ymm = Math.round(ymm/5)*5;
+
+  // Zielcontainer anhand des Mittelpunkts des Teils bestimmen (wichtig bei Trennschnitt: zwei getrennte Bereiche)
+  const cont = containerAtPoint(xmm+w/2, ymm+h/2);
+  if(!cont){
+    if(dragCtx.fromTray){ p.placed=false; p.x=null; p.y=null; }
+    renderTray(); renderPlate(); dragCtx=null; return;
+  }
+  xmm = Math.max(cont.x, Math.min(xmm, cont.x+cont.w-w));
+  ymm = Math.max(cont.y, Math.min(ymm, cont.y+cont.h-h));
+
+  const candidate = {x:xmm,y:ymm,w,h};
+  if(overlapsAny(candidate, p.id)){
+    if(dragCtx.fromTray){ p.placed=false; p.x=null; p.y=null; }
+    renderTray(); renderPlate(); dragCtx=null; return;
+  }
+  p.placed=true; p.x=xmm; p.y=ymm;
+  renderTray(); renderPlate(); updatePreCutUI(); dragCtx=null;
+}
+function clampIntoPlate(p){
+  const {w,h} = partDims(p);
+  const cont = containerAtPoint(p.x+w/2, p.y+h/2) || getContainers()[0];
+  p.x = Math.max(cont.x, Math.min(p.x, cont.x+cont.w-w));
+  p.y = Math.max(cont.y, Math.min(p.y, cont.y+cont.h-h));
+  if(overlapsAny({x:p.x,y:p.y,w,h}, p.id)) p.y = Math.min(p.y+20, cont.y+cont.h-h);
+}
+function overlapsAny(cand, excludeId){
+  const buf = KERF;
+  return state.parts.some(other=>{
+    if(other.id===excludeId || !other.placed) return false;
+    const od = partDims(other);
+    return !(cand.x+cand.w+buf<=other.x || other.x+od.w+buf<=cand.x || cand.y+cand.h+buf<=other.y || other.y+od.h+buf<=cand.y);
+  });
+}
+
+/* ---------- Timer ---------- */
+function startTimer(){
+  clearInterval(timerHandle);
+  updateTimerDisplay();
+  timerHandle = setInterval(()=>{
+    state.timeLeft--; updateTimerDisplay();
+    if(state.timeLeft<=0){ clearInterval(timerHandle); evaluate(true); }
+  },1000);
+}
+function updateTimerDisplay(){
+  const m=Math.floor(state.timeLeft/60), s=state.timeLeft%60;
+  document.getElementById('timerVal').textContent = m+':'+String(s).padStart(2,'0');
+  document.getElementById('chipTimer').classList.toggle('low', state.timeLeft<=30);
+}
+
+/* ---------- Guillotine-Prüfung + Freiflächen-Ermittlung ---------- */
+function analyzeLayout(rects, container, freeRects){
+  freeRects = freeRects || [];
+  if(rects.length===0){ freeRects.push(container); return {ok:true, offending:[], freeRects}; }
+  if(rects.length===1){
+    const r = rects[0];
+    const rightW = (container.x+container.w) - (r.x+r.w);
+    if(rightW > 1) freeRects.push({x:r.x+r.w, y:container.y, w:rightW, h:container.h});
+    const bottomH = (container.y+container.h) - (r.y+r.h);
+    if(bottomH > 1) freeRects.push({x:container.x, y:r.y+r.h, w:container.w, h:bottomH});
+    const leftW = r.x - container.x;
+    if(leftW > 1) freeRects.push({x:container.x, y:container.y, w:leftW, h:r.h});
+    const topH = r.y - container.y;
+    if(topH > 1) freeRects.push({x:container.x, y:container.y, w:container.w, h:topH});
+    return {ok:true, offending:[], freeRects};
+  }
+  const ys = new Set([container.y, container.y+container.h]);
+  rects.forEach(r=>{ ys.add(r.y); ys.add(r.y+r.h); });
+  for(const y of ys){
+    if(y<=container.y || y>=container.y+container.h) continue;
+    const crosses = rects.some(r=> r.y<y && r.y+r.h>y);
+    if(!crosses){
+      const top = rects.filter(r=> r.y+r.h<=y+0.01), bot = rects.filter(r=> r.y>=y-0.01);
+      if(top.length+bot.length===rects.length && top.length>0 && bot.length>0){
+        const a = analyzeLayout(top, {x:container.x,y:container.y,w:container.w,h:y-container.y}, freeRects);
+        const b = analyzeLayout(bot, {x:container.x,y:y,w:container.w,h:container.y+container.h-y}, freeRects);
+        if(a.ok && b.ok) return {ok:true, offending:[], freeRects};
+      }
+    }
+  }
+  const xs = new Set([container.x, container.x+container.w]);
+  rects.forEach(r=>{ xs.add(r.x); xs.add(r.x+r.w); });
+  for(const x of xs){
+    if(x<=container.x || x>=container.x+container.w) continue;
+    const crosses = rects.some(r=> r.x<x && r.x+r.w>x);
+    if(!crosses){
+      const left = rects.filter(r=> r.x+r.w<=x+0.01), right = rects.filter(r=> r.x>=x-0.01);
+      if(left.length+right.length===rects.length && left.length>0 && right.length>0){
+        const a = analyzeLayout(left, {x:container.x,y:container.y,w:x-container.x,h:container.h}, freeRects);
+        const b = analyzeLayout(right, {x:x,y:container.y,w:container.x+container.w-x,h:container.h}, freeRects);
+        if(a.ok && b.ok) return {ok:true, offending:[], freeRects};
+      }
+    }
+  }
+  return {ok:false, offending: rects.map(r=>r.id), freeRects};
+}
+
+/* ---------- Referenzplan (Shelf-Heuristik, guillotine-gültig, über mehrere Container) ---------- */
+function shelfPackMulti(parts, containers, kerf){
+  const sorted = [...parts].sort((a,b)=> b.widMm - a.widMm);
+  const contState = containers.map(c=>({container:c, shelves:[], cursorY:c.y}));
+  const placements = [];
+  let overflow = false;
+  for(const p of sorted){
+    let done = false;
+    for(const cs of contState){
+      const c = cs.container;
+      let shelf = cs.shelves.find(s => (c.x+c.w) - s.usedRight >= p.lenMm + (s.usedRight>c.x ? kerf : 0));
+      if(!shelf){
+        if(cs.cursorY + p.widMm <= c.y+c.h){
+          shelf = {y:cs.cursorY, usedRight:c.x};
+          cs.shelves.push(shelf);
+          cs.cursorY += p.widMm + kerf;
+        } else {
+          continue; // passt hier nicht mehr, nächsten Container versuchen
+        }
+      }
+      const x = shelf.usedRight>c.x ? shelf.usedRight+kerf : c.x;
+      placements.push({id:p.id, x, y:shelf.y, w:p.lenMm, h:p.widMm});
+      shelf.usedRight = x + p.lenMm;
+      done = true;
+      break;
+    }
+    if(!done){ overflow = true; }
+  }
+  return {placements, overflow};
+}
+
+function classifyFree(freeRects, usableArea){
+  const valid = freeRects.filter(r=> r.w>0 && r.h>0);
+  const restList = [];
+  let restArea = 0, abfallArea = 0;
+  valid.forEach(r=>{
+    const area = r.w*r.h;
+    if(area>=REUSE_MIN_AREA && r.w>=REUSE_MIN_DIM && r.h>=REUSE_MIN_DIM){
+      restList.push(r); restArea += area;
+    } else {
+      abfallArea += area;
+    }
+  });
+  restList.sort((a,b)=> (b.w*b.h)-(a.w*a.h));
+  return { restArea, abfallArea, restCount:restList.length, restList,
+           restPct: restArea/usableArea*100, abfallPct: abfallArea/usableArea*100 };
+}
+
+/* ---------- Sägen / Auswertung ---------- */
+document.getElementById('btnSaegen').addEventListener('click', ()=> evaluate(false));
+document.getElementById('btnReset').addEventListener('click', ()=>{
+  state.parts.forEach(p=>{p.placed=false; p.x=null; p.y=null;});
+  renderTray(); renderPlate(); updatePreCutUI();
+});
+
+function evaluate(timeUp){
+  const placed = state.parts.filter(p=>p.placed);
+  const pending = state.parts.filter(p=>!p.placed);
+  clearInterval(timerHandle);
+
+  const containers = getContainers();
+  const usableArea = containers.reduce((s,c)=> s+c.w*c.h, 0);
+
+  let allOk = true, allOffending = [], combinedFree = [];
+  containers.forEach(c=>{
+    const inside = placed.filter(p=>{
+      const d=partDims(p); const cx=p.x+d.w/2, cy=p.y+d.h/2;
+      return cx>=c.x && cx<=c.x+c.w && cy>=c.y && cy<=c.y+c.h;
+    }).map(p=>{ const d=partDims(p); return {id:p.id,x:p.x,y:p.y,w:d.w,h:d.h}; });
+    const res = analyzeLayout(inside, c, []);
+    if(!res.ok){ allOk=false; allOffending.push(...res.offending); }
+    combinedFree.push(...res.freeRects);
+  });
+  const analysis = { ok: allOk, offending: allOffending, freeRects: combinedFree };
+
+  const overlay = document.getElementById('resultOverlay');
+  const card = document.getElementById('resultCard');
+  const body = document.getElementById('resultBody');
+  const title = document.getElementById('resultTitle');
+  const stampSlot = document.getElementById('stampSlot');
+  stampSlot.innerHTML = '';
+
+  const complete = pending.length===0;
+  const success = complete && analysis.ok && !timeUp;
+
+  markFailures(analysis.ok ? [] : analysis.offending);
+
+  if(!success){
+    failCount++; updateTally();
+    card.className='fail';
+    stampSlot.innerHTML = `<div class="stopStamp">${timeUp ? 'Feierabend' : 'Stopp'}</div>`;
+    title.textContent = timeUp ? 'Zeit abgelaufen' : 'Säge blockiert';
+    let issues = [];
+    if(timeUp) issues.push(`Die Schicht ist vorbei. ${pending.length} Teil(e) waren noch nicht zugeschnitten.`);
+    if(!timeUp && pending.length>0) issues.push(`${pending.length} Teil(e) sind noch nicht platziert.`);
+    if(!timeUp && !analysis.ok) issues.push(`${analysis.offending.length} Teil(e) blockieren sich gegenseitig, kein durchgehender Schnitt trennt sie mehr. Ein Formschnitt wäre nötig, das kann die Plattenaufteilsäge nicht.`);
+    body.innerHTML = `<ul>${issues.map(i=>'<li>'+i+'</li>').join('')}</ul><p>Rot gestrichelte Teile im Plan zeigen die Blockade. Korrigieren und erneut sägen.</p>`;
+    document.getElementById('btnRetry').style.display='inline-block';
+  } else {
+    const cls = classifyFree(analysis.freeRects, usableArea);
+    // Referenzplan, über dieselben Container wie der Spieler
+    const ref = shelfPackMulti(state.parts, containers, KERF);
+    let refCls = null;
+    if(!ref.overflow){
+      let refFree = [], refOk = true;
+      containers.forEach(c=>{
+        const inside = ref.placements.filter(pl=>{
+          const cx=pl.x+pl.w/2, cy=pl.y+pl.h/2;
+          return cx>=c.x && cx<=c.x+c.w && cy>=c.y && cy<=c.y+c.h;
+        });
+        const res = analyzeLayout(inside, c, []);
+        if(!res.ok) refOk=false;
+        refFree.push(...res.freeRects);
+      });
+      if(refOk) refCls = classifyFree(refFree, usableArea);
+    }
+
+    card.className='ok';
+    stampSlot.innerHTML = `<div class="seal">Fachgerecht<br>gesägt</div>`;
+    title.textContent = 'Plattenaufteilung erfolgreich';
+
+    const restText = cls.restCount>0
+      ? `${cls.restCount} Stück, gesamt ${(cls.restArea/1e6).toFixed(2)} m² (${cls.restPct.toFixed(1)}%)`
+      : 'keins, nur Kleinabfall';
+    let rows = `
+      <tr><td>Ihr Abfall</td><td class="num">${cls.abfallPct.toFixed(1)}%</td></tr>
+      <tr><td>Ihre Reststücke (wiederverwendbar)</td><td class="num">${restText}</td></tr>`;
+    if(refCls){
+      const refRestText = refCls.restCount>0 ? `${refCls.restCount} Stück, ${(refCls.restArea/1e6).toFixed(2)} m²` : 'keins';
+      rows += `<tr><td>Referenzplan — Abfall</td><td class="num">${refCls.abfallPct.toFixed(1)}%</td></tr>
+                <tr><td>Referenzplan — Reststücke</td><td class="num">${refRestText}</td></tr>`;
+    }
+
+    let verdict;
+    if(refCls){
+      const delta = cls.abfallPct - refCls.abfallPct;
+      if(delta <= 0.05){
+        verdict = 'Meisterhaft gestapelt. Mindestens so wenig Abfall wie der Referenzplan, so nimmt der Kollege am Restplattenlager auch wirklich etwas mit, das er später braucht.';
+      } else if(delta <= 3){
+        verdict = `Brauchbar, aber kein Meisterstück. Der Referenzplan kommt mit ${delta.toFixed(1)} Prozentpunkten weniger Abfall aus, das ist Material, das hier ohne Not verschenkt wurde.`;
+      } else if(delta <= 8){
+        verdict = `Das ginge in der Werkstatt nicht ohne Nachfrage durch. ${delta.toFixed(1)} Prozentpunkte mehr Abfall als nötig, da war zu viel Zufall im Spiel, zu wenig Plan.`;
+      } else {
+        verdict = `Das ist Materialverschwendung. ${delta.toFixed(1)} Prozentpunkte mehr Abfall als der Referenzplan, damit würde kein Betrieb kalkulieren. Nochmal von vorn.`;
+      }
+    } else verdict = '';
+
+    const bigRest = cls.restList.find(r=> r.w*r.h > 1000000 || Math.max(r.w,r.h) > 1500);
+    const trennHinweis = (bigRest && !state.preCut)
+      ? '<p style="color:var(--walnut-soft);">Hinweis: Eines Ihrer Reststücke ist recht groß und sperrig. In der Praxis würde sich hier oft ein zusätzlicher Trennschnitt lohnen, zwei handliche, gut lagerfähige Reststücke statt eines unhandlichen großen.</p>'
+      : '';
+
+    body.innerHTML = `<p>Alle Teile liegen richtig und durchgehend sägbar.</p><table>${rows}</table><p>${verdict}</p>${trennHinweis}`;
+    document.getElementById('wasteVal').textContent = cls.abfallPct.toFixed(1)+'%';
+    document.getElementById('chipWaste').style.background = cls.abfallPct<8 ? 'var(--sap-green)' : (cls.abfallPct<18 ? 'var(--orange)' : 'var(--kerf-red)');
+    if(bestWaste===null || cls.abfallPct<bestWaste){ bestWaste=cls.abfallPct; document.getElementById('scoreVal').textContent = bestWaste.toFixed(1)+'%'; }
+    highlightRest(cls.restList);
+    document.getElementById('btnRetry').style.display='none';
+  }
+  overlay.style.display='flex';
+}
+
+function markFailures(guillotineIds){
+  document.querySelectorAll('.part-rect rect').forEach(r=> r.classList.remove('fail-guillotine'));
+  document.querySelectorAll('.part-rect').forEach(el=>{
+    if(guillotineIds.includes(el.dataset.id)) el.querySelector('rect').classList.add('fail-guillotine');
+  });
+}
+function highlightRest(rects){
+  const layer = document.getElementById('restLayer');
+  if(!layer) return;
+  layer.innerHTML = '';
+  (rects||[]).forEach(rect=>{
+    const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    r.setAttribute('class','rest-highlight');
+    r.setAttribute('x', mmToPx(rect.x)); r.setAttribute('y', mmToPx(rect.y));
+    r.setAttribute('width', mmToPx(rect.w)); r.setAttribute('height', mmToPx(rect.h));
+    layer.appendChild(r);
+  });
+}
+
+/* ---------- Overlay-Buttons ---------- */
+document.getElementById('btnContinue').addEventListener('click', ()=>{
+  document.getElementById('resultOverlay').style.display='none';
+  startRound();
+});
+document.getElementById('btnRetry').addEventListener('click', ()=>{
+  document.getElementById('resultOverlay').style.display='none';
+  document.querySelectorAll('.fail-guillotine').forEach(el=>el.classList.remove('fail-guillotine'));
+  if(state.timeLeft>0) startTimer();
+});
+
+/* ---------- Tabs (Spanplatte spielbar, Rest Vorschau) ---------- */
+function renderTabs(){
+  const tabs = document.getElementById('tabs');
+  tabs.innerHTML = '';
+  const defs = [ {key:'span', label:'Spanplatte — spielbar', locked:false},
+                 {key:'sperr', label:'Sperrholz — Vorschau', locked:true},
+                 {key:'massiv', label:'Massivholz-3S — Vorschau', locked:true} ];
+  defs.forEach(d=>{
+    const b = document.createElement('button');
+    b.className = 'tab'+(d.locked?' locked':'')+(d.key==='span'?' active':'');
+    b.innerHTML = d.label + (d.locked ? ' <span class="lock">&#128274;</span>' : '');
+    b.addEventListener('click', ()=> switchTab(d.key, defs, tabs));
+    tabs.appendChild(b);
+  });
+}
+function switchTab(key, defs, tabsEl){
+  [...tabsEl.children].forEach((el,i)=> el.classList.toggle('active', defs[i].key===key));
+  const gameView = document.getElementById('gameView'), previewView = document.getElementById('previewView');
+  if(key==='span'){ gameView.style.display='grid'; previewView.style.display='none'; return; }
+  gameView.style.display='none'; previewView.style.display='block';
+  const m = PREVIEWS[key];
+  previewView.innerHTML = `
+    <h2 style="font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:15px;">${m.name} — nicht spielbar in dieser Version</h2>
+    <div class="lockIcon">&#128274;</div>
+    <p>${m.text}</p>
+    <p>Um diesen Werkstoff spielbar zu machen, bräuchte jedes Teil ein festes Maserrichtungs-Attribut, und die Drehung müsste in der Oberfläche gesperrt statt frei sein.
+       Das ist als nächster Ausbauschritt vorgesehen, für den Prototyp bleibt es bei der Anzeige der Regel.</p>
+  `;
+}
+
+/* ---------- Startscreen ---------- */
+document.getElementById('btnStartPrototype').addEventListener('click', ()=>{
+  document.getElementById('startScreen').style.display='none';
+  document.querySelector('.app').style.display='block';
+  renderTabs();
+  startRound();
+});
+</script>
+</body>
+</html>
