@@ -60,8 +60,8 @@ Dieses Repository geht über die geforderte Skizze hinaus: Es enthält einen **t
 
 ### Live-Version
 Verfügbar hier:
-- **[🎮 Direkt im Browser spielen](https://raw.githubusercontent.com/BSLehrer/E-Learning/main/nesting_challenge_4.html)** - Öffnet die HTML-Datei direkt im Browser
-- - **[⬇️ Download](https://github.com/BSLehrer/E-Learning/raw/main/nesting_challenge_4.html)** - Datei herunterladen und lokal spielen
+- **[🎮 Direkt im Browser spielen](https://htmlpreview.github.io/?https://github.com/BSLehrer/E-Learning/blob/main/nesting_challenge_4.html)** - Öffnet die HTML-Datei direkt im BrowserLearning/main/nesting_challenge_4.html)** - Öffnet die HTML-Datei direkt im Browser
+- **[⬇️ Download](https://github.com/BSLehrer/E-Learning/raw/main/nesting_challenge_4.html)** - Datei herunterladen und lokal spielenherunterladen und lokal spielen
 
 ### Lokal spielen
 1. `index.html` im Browser öffnen
